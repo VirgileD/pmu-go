@@ -1,13 +1,11 @@
-package main
+package pmulibs
 
 import (
-	"flag"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"sort"
 	"strconv"
-	"time"
 )
 
 type PStat struct {
@@ -27,16 +25,6 @@ type StatsChev struct {
 	RefCote  int `bson:"refCote"`
 	Valeur   int
 }
-type Course struct {
-	Name       string               `bson:"name"`
-	Location   string               `bson:"location"`
-	NbPartants int                  `bson:"nbPartants"`
-	Date       string               //`bson:"date"`
-	Finish     [5]int               //`bson:"finish"`
-	Gains      map[string]float32   //`bson:"gains"`
-	Pronos     map[string][]int     //`bson:"pronos"`
-	StatsChev  map[string]StatsChev `bson:"statsChev"`
-}
 
 func contains(haystack []int, needles []int) (nbr int) {
 	for _, needle := range needles {
@@ -49,36 +37,13 @@ func contains(haystack []int, needles []int) (nbr int) {
 	return nbr
 }
 
-func getCourse(date string) (course Course) {
-	session, err := mgo.Dial("localhost:27017")
-	if err != nil {
-		panic("[getCourse] error while ceating session: " + err.Error())
-	}
-	defer session.Close()
-	// Optional. Switch the session to a monotonic behavior.
-	//session.SetMode(mgo.Monotonic, true)
-
-	c := session.DB("pmu").C("courses")
-	result := Course{}
-	err = c.Find(bson.M{"date": date}).One(&result)
-	//nb, err := c.Find(bson.M{"date": "2013-08-27"}).Count()
-	if err != nil {
-		panic("[getCourse] error while finding course " + date + ": " + err.Error())
-	}
-	//fmt.Printf("%d\n", nb)
-	//fmt.Printf("%#v\n", result)
-	//fmt.Printf("leturf: ", result.Pronos["le turf"])
-	//fmt.Println("location: ", result.finish)
-	return result
-}
-
 func calcStats(date string) (pStats PStats) {
 	fmt.Println("calcStats(" + date + ")")
 	result := PStats{}
 	result.Date = date
 	result.Nbr = 1
 	result.Stats = make(map[string]*PStat)
-	course := getCourse(date)
+	course := GetCourse(date)
 	if len(course.Finish) == 0 {
 		panic("[calcStats] no finish in course of " + date)
 	}
@@ -97,7 +62,7 @@ func calcStats(date string) (pStats PStats) {
 	return result
 }
 
-func getStats(date string, force bool) (pStats PStats) {
+func GetStats(date string, force bool) (pStats PStats) {
 	fmt.Println("getStats(" + date + "," + strconv.FormatBool(force) + ")")
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {
@@ -111,7 +76,7 @@ func getStats(date string, force bool) (pStats PStats) {
 	result := PStats{}
 	if force {
 		result = calcStats(date)
-		setStats(result)
+		SetStats(result)
 		return result
 	}
 	err = c.Find(bson.M{"date": date}).One(&result)
@@ -123,7 +88,7 @@ func getStats(date string, force bool) (pStats PStats) {
 		} else {
 			if err.Error() == "not found" {
 				result = calcStats(date)
-				setStats(result)
+				SetStats(result)
 			}
 		}
 	}
@@ -131,7 +96,7 @@ func getStats(date string, force bool) (pStats PStats) {
 	return result
 }
 
-func addStats(pStats1 PStats, pStats2 PStats) (pStats3 PStats) {
+func AddStats(pStats1 PStats, pStats2 PStats) (pStats3 PStats) {
 	fmt.Println("addStats")
 	pStats3.Stats = make(map[string]*PStat)
 	pStats3.Date = pStats1.Date + "," + pStats2.Date
@@ -157,7 +122,7 @@ func addStats(pStats1 PStats, pStats2 PStats) (pStats3 PStats) {
 	return pStats3
 }
 
-func setStats(pStats PStats) {
+func SetStats(pStats PStats) {
 	fmt.Println("setStats")
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {
@@ -200,7 +165,7 @@ func sortMapByValue(m map[int]float32) PairList {
 	return p
 }
 
-func applyStats(pStats PStats, course Course) {
+func ApplyStats(pStats PStats, course Course) {
 	final := make(map[int]float32)
 	for pronoName, prono := range course.Pronos {
 		fmt.Println(pronoName, prono)
@@ -229,34 +194,4 @@ func applyStats(pStats PStats, course Course) {
 		i++
 	}
 	fmt.Println(course.Finish, course.NbPartants, course.Gains["m7"], course.Gains["4d"])
-}
-
-func main() {
-	var date string
-	const layout = "2006-01-02"
-	var now = time.Now()
-	flag.StringVar(&date, "date", now.Format(layout), "help message for date")
-	flag.Parse()
-	var pStats2 = PStats{}
-	now = now.AddDate(0, 0, -1)
-	for {
-		var pStats3 = getStats(now.Format(layout), true)
-		pStats2 = addStats(pStats2, pStats3)
-		applyStats(pStats2, getCourse(now.Format(layout)))
-		now = now.AddDate(0, 0, -1)
-	}
-	/*
-		var pStats = getStats("2013-09-04", false)
-		fmt.Println(pStats.Stats["paris-courses_com"])
-
-		var pStats2 = getStats("2013-09-05", true)
-
-		fmt.Println(pStats2.Stats["paris-courses_com"])
-
-		var pStats3 = addStats(pStats, pStats2)
-		fmt.Println(pStats3.Stats["paris-courses_com"])
-		fmt.Println(pStats3.Nbr)
-		fmt.Println(pStats3.Date)
-		applyStats(pStats3, getCourse("2013-09-05"))
-	*/
 }
