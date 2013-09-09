@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	//"fmt"
 	"github.com/VirgileD/pmu-go/pmulibs"
 	"time"
 )
@@ -13,14 +14,24 @@ func main() {
 	flag.StringVar(&date, "date", now.Format(layout), "help message for date")
 	flag.Parse()
 	var pStats2 = pmulibs.PStats{}
+
 	now = now.AddDate(0, 0, -1)
 	now = now.AddDate(0, 0, -1)
 	for {
 		var pStats3 = pmulibs.GetStats(now.Format(layout), true)
-		pStats2 = pmulibs.AddStats(pStats2, pStats3)
 		pmulibs.ApplyStats(pStats2, pmulibs.GetCourse(now.Format(layout)))
-		now = now.AddDate(0, 0, -1)
+		if pStats3.Nbr != 0 {
+			pStats2 = pmulibs.AddStats(pStats2, pStats3)
+			now = now.AddDate(0, 0, -1)
+		} else {
+			break
+		}
 	}
+	now = time.Now()
+	now = now.AddDate(0, 0, -1)
+	//fmt.Println(pStats2, now.Format(layout))
+	pmulibs.ApplyStats(pStats2, pmulibs.GetCourse(now.Format(layout)))
+
 	/*
 		var pStats = getStats("2013-09-04", false)
 		fmt.Println(pStats.Stats["paris-courses_com"])

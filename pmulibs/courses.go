@@ -2,6 +2,7 @@
 package pmulibs
 
 import (
+	//"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -31,11 +32,12 @@ func GetCourse(date string) (course Course) {
 	err = c.Find(bson.M{"date": date}).One(&result)
 	//nb, err := c.Find(bson.M{"date": "2013-08-27"}).Count()
 	if err != nil {
-		panic("[getCourse] error while finding course " + date + ": " + err.Error())
+		result.NbPartants = 0
+		return result
 	}
 	//fmt.Printf("%d\n", nb)
 	//fmt.Printf("%#v\n", result)
-	//fmt.Printf("leturf: ", result.Pronos["le turf"])
+	//fmt.Printf("leturf: ", result.Pronos["turf tv"])
 	//fmt.Println("location: ", result.finish)
 	return result
 }
