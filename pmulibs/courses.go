@@ -2,10 +2,11 @@
 package pmulibs
 
 import (
-	//"fmt"
+	"fmt"
 	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
+
+var _ = fmt.Println
 
 type Course struct {
 	Name       string               `bson:"name"`
@@ -18,7 +19,7 @@ type Course struct {
 	StatsChev  map[string]StatsChev `bson:"statsChev"`
 }
 
-func GetCourse(date string) (course Course) {
+func GetCourse(findObject interface{}) (course Course) {
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {
 		panic("[getCourse] error while ceating session: " + err.Error())
@@ -29,7 +30,7 @@ func GetCourse(date string) (course Course) {
 
 	c := session.DB("pmu").C("courses")
 	result := Course{}
-	err = c.Find(bson.M{"date": date}).One(&result)
+	err = c.Find(findObject).One(&result)
 	//nb, err := c.Find(bson.M{"date": "2013-08-27"}).Count()
 	if err != nil {
 		result.NbPartants = 0
@@ -40,4 +41,27 @@ func GetCourse(date string) (course Course) {
 	//fmt.Printf("leturf: ", result.Pronos["turf tv"])
 	//fmt.Println("location: ", result.finish)
 	return result
+}
+
+func GetCourses(findObject interface{}) (courses []Course) {
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {
+		panic("[getCourse] error while ceating session: " + err.Error())
+	}
+	defer session.Close()
+	// Optional. Switch the session to a monotonic behavior.
+	//session.SetMode(mgo.Monotonic, true)
+
+	c := session.DB("pmu").C("courses")
+	results := []Course{}
+	err = c.Find(findObject).All(&results)
+	//nb, err := c.Find(bson.M{"date": "2013-08-27"}).Count()
+	if err != nil {
+		return results
+	}
+	//fmt.Printf("%d\n", nb)
+	//fmt.Printf("%#v\n", result)
+	//fmt.Printf("leturf: ", result.Pronos["turf tv"])
+	//fmt.Println("location: ", result.finish)
+	return results
 }

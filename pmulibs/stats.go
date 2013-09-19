@@ -1,11 +1,12 @@
 package pmulibs
 
 import (
-	"fmt"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	//	"fmt"
+	//	"labix.org/v2/mgo"
+	//	"labix.org/v2/mgo/bson"
 	"sort"
-	"strconv"
+
+//	"strconv"
 )
 
 type PStat struct {
@@ -24,31 +25,6 @@ type StatsChev struct {
 	LastCote int `bson:"lastCote"`
 	RefCote  int `bson:"refCote"`
 	Valeur   int
-}
-
-// A data structure to hold a key/value pair.
-type Pair struct {
-	Key   int
-	Value float32
-}
-
-// A slice of Pairs that implements sort.Interface to sort by Value.
-type PairList []Pair
-
-func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p PairList) Len() int           { return len(p) }
-func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
-
-// A function to turn a map into a PairList, then sort and return it.
-func sortMapByValue(m map[int]float32) PairList {
-	p := make(PairList, len(m))
-	i := 0
-	for k, v := range m {
-		p[i] = Pair{k, v}
-		i++
-	}
-	sort.Sort(p)
-	return p
 }
 
 type sortedMap struct {
@@ -81,6 +57,7 @@ func sortedKeys(m map[string]float32) []string {
 	return sm.s
 }
 
+/*
 func contains(haystack []int, needles []int) (nbr int) {
 	for _, needle := range needles {
 		for _, a := range haystack {
@@ -93,7 +70,7 @@ func contains(haystack []int, needles []int) (nbr int) {
 }
 
 func calcStats(date string) (pStats PStats) {
-	//fmt.Println("calcStats(" + date + ")")
+	fmt.Println("calcStats(" + date + ")")
 	result := PStats{}
 	result.Date = date
 	result.Nbr = 1
@@ -121,7 +98,7 @@ func calcStats(date string) (pStats PStats) {
 }
 
 func GetStats(date string, force bool) (pStats PStats) {
-	//fmt.Println("getStats(" + date + "," + strconv.FormatBool(force) + ")")
+	fmt.Println("getStats(" + date + "," + strconv.FormatBool(force) + ")")
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {
 		panic("[getStats] error while creating session " + err.Error())
@@ -159,7 +136,7 @@ func GetStats(date string, force bool) (pStats PStats) {
 }
 
 func AddStats(pStats1 PStats, pStats2 PStats) (pStats3 PStats) {
-	//fmt.Println("addStats")
+	fmt.Println("addStats")
 	if pStats1.Nbr == 0 {
 		return pStats2
 	}
@@ -188,7 +165,8 @@ func AddStats(pStats1 PStats, pStats2 PStats) (pStats3 PStats) {
 }
 
 func SetStats(pStats PStats) {
-	//fmt.Println("setStats")
+	fmt.Println("setStats")
+	fmt.Println(pStats)
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {
 		panic("[setStats] error while creating session " + err.Error())
@@ -248,10 +226,11 @@ func UnifyComb(comb *Combination, mapComb map[string]float32) (stringComb string
 }
 
 func ApplyStats(pStats PStats, course Course) {
+	fmt.Println("applyStats")
+	fmt.Println(pStats)
 	// calculate the pondered wiehgt of each horse
 	final := make(map[int]float32)
 	for pronoName, prono := range course.Pronos {
-		//fmt.Println(pronoName, prono)
 		if stats, ok := pStats.Stats[pronoName]; !ok {
 			fmt.Println(pronoName + " is unknown in stats!")
 		} else {
@@ -264,10 +243,10 @@ func ApplyStats(pStats PStats, course Course) {
 			}
 		}
 	}
+
 	// init the set of horse (horse that have not been inlcuded in any prono are removed)
 	//fmt.Println(final)
-
-	/*set := make([]int, len(final), len(final))
+	set := make([]int, len(final), len(final))
 	i := 1
 	j := 0
 	for i < len(final)+1 {
@@ -279,31 +258,83 @@ func ApplyStats(pStats PStats, course Course) {
 		}
 		i++
 	}
-	fmt.Println(set)
+	//fmt.Println(set)
 	combs4 := InitCombination(4, set)
-	mapComb := make(map[string]float32)
-	for indexComb, comb := range combs4.Combs {
+	mapComb := make(map[string]int)
+	for _, comb := range combs4.Combs {
+		var stringComb = ""
+		for index, chev := range comb.Comb {
+			stringComb += strconv.Itoa(chev)
+			if index < len(comb.Comb)-1 {
+				stringComb += "-"
+			}
+		}
 		//fmt.Println(indexComb, comb)
-		value, stringComb := applyStat(&comb, course.Pronos, pStats)
-		fmt.Println(indexComb, comb, stringComb)
-		mapComb[stringComb] = value
+		//value, stringComb := applyStat(&comb, course.Pronos, pStats)
+		//fmt.Println(indexComb, comb, stringComb)
+		mapComb[stringComb] = 1
 	}
-	combs7 := InitCombination(7, set)
-	mapComb7 := make(map[string]float32)
-	for _, comb := range combs7.Combs {
-		stringComb, value := UnifyComb(&comb, mapComb)
-		//fmt.Println(comb)
-		mapComb7[stringComb] = value
+
+	var nb int
+	nb = 0
+	for pronoName, pstat := range pStats.Stats {
+		//fmt.Println(pronoName + ": " + strconv.FormatFloat(float64(pstat.In8), 'g', -1, 32))
+		if pstat.In8/float32(pStats.Nbr) < 3 {
+			if pronoOf, ok := course.Pronos[pronoName]; ok {
+				sort.Ints(pronoOf)
+				combs4 := InitCombination(4, pronoOf)
+				for _, comb := range combs4.Combs {
+					var stringComb = ""
+					for index, chev := range comb.Comb {
+						stringComb += strconv.Itoa(chev)
+						if index < len(comb.Comb)-1 {
+							stringComb += "-"
+						}
+					}
+					if mapComb[stringComb] != 0 {
+						nb++
+						fmt.Println("removing " + stringComb + " because of " + pronoName)
+						mapComb[stringComb] = 0
+					}
+				}
+			}
+		}
 	}
-	sorted := sortedKeys(mapComb7)
-	fmt.Println(len(sorted))
-	//for _, key := range sorted {
-	//	fmt.Println(mapComb7, mapComb7[key])
-	//}
-	*/
+	fmt.Println(nb)
+	nb = 0
+	for _, value := range mapComb {
+		if value == 1 {
+			//fmt.Println(key)
+			nb++
+		}
+	}
+	fmt.Println(nb)
+	fmt.Println(len(mapComb))
+
+		//mapComb := make(map[string]float32)
+		//for indexComb, comb := range combs4.Combs {
+		//	//fmt.Println(indexComb, comb)
+		//	value, stringComb := applyStat(&comb, course.Pronos, pStats)
+		//	fmt.Println(indexComb, comb, stringComb)
+		//	mapComb[stringComb] = value
+		//}
+		//combs7 := InitCombination(7, set)
+		//mapComb7 := make(map[string]float32)
+		//for _, comb := range combs7.Combs {
+		//	stringComb, value := UnifyComb(&comb, mapComb)
+		//	//fmt.Println(comb)
+		//	mapComb7[stringComb] = value
+		//}
+		//sorted := sortedKeys(mapComb7)
+		//fmt.Println(len(sorted))
+		////for _, key := range sorted {
+		////	fmt.Println(mapComb7, mapComb7[key])
+		////}
+
 	test := sortMapByValue(final)
 	for index, pair := range test {
 		fmt.Println(strconv.Itoa(len(test)-index) + " " + strconv.Itoa(pair.Key) + " (" + strconv.FormatFloat(float64(pair.Value), 'g', -1, 32) + ")")
 	}
 	fmt.Println(course.Finish, course.NbPartants, course.Gains["m7"], course.Gains["4d"])
 }
+*/
